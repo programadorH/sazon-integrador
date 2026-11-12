@@ -1,0 +1,443 @@
+import React, { useEffect, useMemo, useState } from "react";
+
+const STORAGE_KEY = "sazon_comunidad_reportes";
+
+const INITIAL_REPORTS = [
+  {
+    id: "REP-1048",
+    content: "La receta quedó deliciosa, pero el tiempo de cocción indicado no coincide.",
+    target: "Arepas de maíz con hogao",
+    author: "Camila Ríos",
+    reporter: "Andrés M.",
+    reason: "Información incorrecta",
+    details: "El paso final necesita más tiempo para que la masa quede bien cocida.",
+    status: "Pendiente",
+    createdAt: "12 nov 2026",
+    removed: false,
+  },
+  {
+    id: "REP-1047",
+    content: "Visita mi perfil y compra este producto con descuento.",
+    target: "Reseña de receta · Lasaña casera",
+    author: "Perfil promocional",
+    reporter: "Mariana P.",
+    reason: "Spam o contenido promocional",
+    details: "Incluye publicidad que no está relacionada con la receta.",
+    status: "En revisión",
+    createdAt: "11 nov 2026",
+    removed: false,
+  },
+  {
+    id: "REP-1046",
+    content: "Esta receta es horrible y quien la publicó no sabe cocinar.",
+    target: "Reseña de receta · Sopa de verduras",
+    author: "Daniela G.",
+    reporter: "Julián C.",
+    reason: "Acoso o lenguaje ofensivo",
+    details: "El comentario ataca personalmente a la persona creadora.",
+    status: "Pendiente",
+    createdAt: "10 nov 2026",
+    removed: false,
+  },
+];
+
+const FILTERS = ["Todos", "Pendiente", "En revisión", "Resuelto"];
+
+function readReports() {
+  try {
+    const storedReports = window.localStorage.getItem(STORAGE_KEY);
+    if (!storedReports) {
+      return { reports: INITIAL_REPORTS, notice: "" };
+    }
+
+    const parsedReports = JSON.parse(storedReports);
+    if (!Array.isArray(parsedReports)) {
+      throw new Error("El formato de los reportes no es válido.");
+    }
+
+    return { reports: parsedReports, notice: "" };
+  } catch {
+    return {
+      reports: INITIAL_REPORTS,
+      notice: "No se pudieron leer los reportes guardados. Se muestran datos de ejemplo.",
+    };
+  }
+}
+
+function statusStyle(status) {
+  if (status === "Pendiente") {
+    return "bg-amber-100 text-amber-800 dark:bg-amber-400/15 dark:text-amber-300";
+  }
+  if (status === "En revisión") {
+    return "bg-blue-100 text-blue-800 dark:bg-blue-400/15 dark:text-blue-300";
+  }
+  return "bg-sazon-verdeHoja/15 text-sazon-verdeHoja dark:text-sazon-verdeNeon";
+}
+
+export default function ReporteModeracion() {
+  const [initialState] = useState(readReports);
+  const [reports, setReports] = useState(initialState.reports);
+  const [activeFilter, setActiveFilter] = useState("Todos");
+  const [search, setSearch] = useState("");
+  const [storageNotice, setStorageNotice] = useState(initialState.notice);
+  const [formNotice, setFormNotice] = useState("");
+  const [target, setTarget] = useState("");
+  const [reason, setReason] = useState("Spam o contenido promocional");
+  const [details, setDetails] = useState("");
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(reports));
+      setStorageNotice("");
+    } catch {
+      setStorageNotice("No fue posible guardar los cambios en este navegador.");
+    }
+  }, [reports]);
+
+  const visibleReports = useMemo(() => {
+    const normalizedSearch = search.trim().toLocaleLowerCase("es");
+    return reports.filter((report) => {
+      const matchesFilter = activeFilter === "Todos" || report.status === activeFilter;
+      const searchableText = [
+        report.id,
+        report.target,
+        report.author,
+        report.reporter,
+        report.reason,
+        report.content,
+      ]
+        .join(" ")
+        .toLocaleLowerCase("es");
+      return matchesFilter && searchableText.includes(normalizedSearch);
+    });
+  }, [activeFilter, reports, search]);
+
+  const pendingCount = reports.filter((report) => report.status === "Pendiente").length;
+  const reviewingCount = reports.filter((report) => report.status === "En revisión").length;
+  const resolvedCount = reports.filter((report) => report.status === "Resuelto").length;
+
+  function submitReport(event) {
+    event.preventDefault();
+    if (!target.trim() || !details.trim()) {
+      setFormNotice("Completa la referencia del contenido y describe el motivo del reporte.");
+      return;
+    }
+
+    const newReport = {
+      id: `REP-${Date.now()}`,
+      content: details.trim(),
+      target: target.trim(),
+      author: "Contenido reportado",
+      reporter: "Usuario actual",
+      reason,
+      details: details.trim(),
+      status: "Pendiente",
+      createdAt: new Intl.DateTimeFormat("es-CO", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      }).format(new Date()),
+      removed: false,
+    };
+
+    setReports((currentReports) => [newReport, ...currentReports]);
+    setTarget("");
+    setDetails("");
+    setFormNotice(`Reporte ${newReport.id} enviado para revisión.`);
+    setActiveFilter("Todos");
+  }
+
+  function updateReport(reportId, changes) {
+    setReports((currentReports) =>
+      currentReports.map((report) =>
+        report.id === reportId ? { ...report, ...changes } : report,
+      ),
+    );
+  }
+
+  return (
+    <main className="space-y-6 font-inter text-slate-800 dark:text-slate-100">
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <section>
+          <span className="inline-flex items-center gap-2 rounded-full border border-sazon-verdeHoja/30 bg-sazon-verdeHoja/10 px-3 py-1 font-mono-tag text-xs font-bold uppercase tracking-wider text-sazon-verdeHoja dark:text-sazon-verdeNeon">
+            <i aria-hidden="true" className="bi bi-shield-check" />
+            Comunidad segura
+          </span>
+          <h1 className="mt-3 font-poppins text-2xl font-black text-slate-900 dark:text-white sm:text-3xl">
+            Reportes y moderación
+          </h1>
+          <p className="mt-1 max-w-2xl text-sm text-slate-600 dark:text-slate-300">
+            Revisa los reportes de la comunidad y toma medidas para mantener las reseñas útiles y respetuosas.
+          </p>
+        </section>
+        <output
+          aria-live="polite"
+          className="rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono-tag text-xs text-slate-600 dark:border-white/10 dark:bg-sazon-verdeNutresaCard dark:text-slate-300"
+        >
+          {reports.length} reportes registrados
+        </output>
+      </header>
+
+      {storageNotice && (
+        <aside
+          aria-live="polite"
+          className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200"
+        >
+          <i aria-hidden="true" className="bi bi-exclamation-triangle mr-2" />
+          {storageNotice}
+        </aside>
+      )}
+
+      <section aria-label="Resumen de reportes" className="grid gap-3 sm:grid-cols-3">
+        {[
+          { label: "Pendientes", count: pendingCount, icon: "bi-hourglass-split", color: "text-amber-600 dark:text-amber-300" },
+          { label: "En revisión", count: reviewingCount, icon: "bi-search", color: "text-blue-600 dark:text-blue-300" },
+          { label: "Resueltos", count: resolvedCount, icon: "bi-check2-circle", color: "text-sazon-verdeHoja dark:text-sazon-verdeNeon" },
+        ].map((item) => (
+          <article
+            className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-sazon-verdeNutresaCard"
+            key={item.label}
+          >
+            <section className="flex items-center justify-between">
+              <span className="font-mono-tag text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                {item.label}
+              </span>
+              <i aria-hidden="true" className={`bi ${item.icon} text-xl ${item.color}`} />
+            </section>
+            <p className="mb-0 mt-2 font-poppins text-3xl font-black text-slate-900 dark:text-white">
+              {item.count}
+            </p>
+          </article>
+        ))}
+      </section>
+
+      <section className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.7fr)_minmax(18rem,0.8fr)]">
+        <section
+          aria-labelledby="reports-heading"
+          className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-sazon-verdeNutresaCard sm:p-6"
+        >
+          <header className="flex flex-col gap-4 border-b border-slate-200 pb-4 dark:border-white/10 sm:flex-row sm:items-center sm:justify-between">
+            <section>
+              <h2
+                className="m-0 font-poppins text-lg font-bold text-slate-900 dark:text-white"
+                id="reports-heading"
+              >
+                Bandeja de moderación
+              </h2>
+              <p className="mb-0 mt-1 text-xs text-slate-500 dark:text-slate-400">
+                Prioriza y resuelve los reportes recibidos.
+              </p>
+            </section>
+            <label className="relative block sm:w-56">
+              <span className="sr-only">Buscar reportes</span>
+              <i
+                aria-hidden="true"
+                className="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+              />
+              <input
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pl-9 pr-3 text-sm outline-none transition focus:border-sazon-verdeHoja focus:ring-2 focus:ring-sazon-verdeHoja/20 dark:border-white/10 dark:bg-sazon-verdeNutresa dark:text-white"
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Buscar por texto o ID"
+                type="search"
+                value={search}
+              />
+            </label>
+          </header>
+
+          <nav aria-label="Filtrar reportes" className="flex flex-wrap gap-2 py-4">
+            {FILTERS.map((filter) => (
+              <button
+                aria-pressed={activeFilter === filter}
+                className={`rounded-full px-3 py-1.5 font-mono-tag text-xs font-bold transition ${
+                  activeFilter === filter
+                    ? "bg-sazon-verdeHoja text-white"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-white/10 dark:text-slate-300 dark:hover:bg-white/15"
+                }`}
+                key={filter}
+                onClick={() => setActiveFilter(filter)}
+                type="button"
+              >
+                {filter}
+              </button>
+            ))}
+          </nav>
+
+          <section aria-live="polite" className="space-y-3">
+            {visibleReports.length === 0 ? (
+              <article className="rounded-2xl border border-dashed border-slate-300 px-4 py-10 text-center dark:border-white/15">
+                <i aria-hidden="true" className="bi bi-inbox text-3xl text-slate-400" />
+                <p className="mb-0 mt-2 text-sm text-slate-500 dark:text-slate-400">
+                  No hay reportes que coincidan con esta búsqueda.
+                </p>
+              </article>
+            ) : (
+              visibleReports.map((report) => (
+                <article
+                  className={`rounded-2xl border p-4 transition ${
+                    report.removed
+                      ? "border-slate-200 bg-slate-50 opacity-75 dark:border-white/10 dark:bg-black/10"
+                      : "border-slate-200 bg-slate-50/70 dark:border-white/10 dark:bg-[#0c2419]"
+                  }`}
+                  key={report.id}
+                >
+                  <header className="flex flex-wrap items-center justify-between gap-2">
+                    <section className="flex flex-wrap items-center gap-2">
+                      <span className="font-mono-tag text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                        {report.id}
+                      </span>
+                      <span className={`rounded-full px-2.5 py-1 font-mono-tag text-[10px] font-bold ${statusStyle(report.status)}`}>
+                        {report.status}
+                      </span>
+                      {report.removed && (
+                        <span className="rounded-full bg-red-100 px-2.5 py-1 font-mono-tag text-[10px] font-bold text-red-700 dark:bg-red-400/15 dark:text-red-300">
+                          Contenido retirado
+                        </span>
+                      )}
+                    </section>
+                    <time className="font-mono-tag text-[11px] text-slate-500 dark:text-slate-400">
+                      {report.createdAt}
+                    </time>
+                  </header>
+
+                  <section className="mt-3">
+                    <h3 className="m-0 font-poppins text-sm font-bold text-slate-900 dark:text-white">
+                      {report.target}
+                    </h3>
+                    <p className="mb-0 mt-1 text-sm leading-relaxed text-slate-700 dark:text-slate-200">
+                      “{report.content}”
+                    </p>
+                  </section>
+
+                  <section className="mt-3 flex flex-wrap gap-x-4 gap-y-1 font-mono-tag text-[10px] text-slate-500 dark:text-slate-400">
+                    <span>Reportado por: {report.reporter}</span>
+                    <span>Autor: {report.author}</span>
+                    <span>Motivo: {report.reason}</span>
+                  </section>
+                  {report.details !== report.content && (
+                    <p className="mb-0 mt-2 border-l-2 border-sazon-verdeHoja/50 pl-3 text-xs text-slate-600 dark:text-slate-300">
+                      {report.details}
+                    </p>
+                  )}
+
+                  {report.status !== "Resuelto" && (
+                    <footer className="mt-4 flex flex-wrap gap-2 border-t border-slate-200 pt-3 dark:border-white/10">
+                      {report.status === "Pendiente" && (
+                        <button
+                          className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-bold text-blue-800 transition hover:bg-blue-100 dark:border-blue-400/30 dark:bg-blue-400/10 dark:text-blue-200 dark:hover:bg-blue-400/20"
+                          onClick={() => updateReport(report.id, { status: "En revisión" })}
+                          type="button"
+                        >
+                          <i aria-hidden="true" className="bi bi-search mr-1.5" />
+                          Iniciar revisión
+                        </button>
+                      )}
+                      <button
+                        className="rounded-lg bg-sazon-verdeHoja px-3 py-2 text-xs font-bold text-white transition hover:bg-sazon-verdeHoja/90"
+                        onClick={() => updateReport(report.id, { status: "Resuelto", removed: true })}
+                        type="button"
+                      >
+                        <i aria-hidden="true" className="bi bi-trash3 mr-1.5" />
+                        Retirar contenido
+                      </button>
+                      <button
+                        className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-100 dark:border-white/15 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10"
+                        onClick={() => updateReport(report.id, { status: "Resuelto" })}
+                        type="button"
+                      >
+                        <i aria-hidden="true" className="bi bi-check2 mr-1.5" />
+                        Descartar reporte
+                      </button>
+                    </footer>
+                  )}
+                </article>
+              ))
+            )}
+          </section>
+        </section>
+
+        <aside className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-sazon-verdeNutresaCard sm:p-6">
+          <header className="mb-5">
+            <span className="font-mono-tag text-[10px] font-bold uppercase tracking-widest text-sazon-verdeHoja dark:text-sazon-verdeNeon">
+              Participación comunitaria
+            </span>
+            <h2 className="mb-0 mt-2 font-poppins text-lg font-bold text-slate-900 dark:text-white">
+              Reportar contenido
+            </h2>
+            <p className="mb-0 mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+              Envía una reseña o publicación para que el equipo de moderación la revise.
+            </p>
+          </header>
+
+          <form className="space-y-4" onSubmit={submitReport}>
+            <label className="block space-y-1.5">
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                Reseña o contenido
+              </span>
+              <input
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none transition focus:border-sazon-verdeHoja focus:ring-2 focus:ring-sazon-verdeHoja/20 dark:border-white/10 dark:bg-sazon-verdeNutresa dark:text-white"
+                onChange={(event) => setTarget(event.target.value)}
+                placeholder="Ej. Reseña de la receta de empanadas"
+                required
+                value={target}
+              />
+            </label>
+
+            <label className="block space-y-1.5">
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                Motivo del reporte
+              </span>
+              <select
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none transition focus:border-sazon-verdeHoja focus:ring-2 focus:ring-sazon-verdeHoja/20 dark:border-white/10 dark:bg-sazon-verdeNutresa dark:text-white"
+                onChange={(event) => setReason(event.target.value)}
+                value={reason}
+              >
+                <option>Spam o contenido promocional</option>
+                <option>Acoso o lenguaje ofensivo</option>
+                <option>Información incorrecta</option>
+                <option>Contenido inapropiado</option>
+                <option>Otro motivo</option>
+              </select>
+            </label>
+
+            <label className="block space-y-1.5">
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                Detalles
+              </span>
+              <textarea
+                className="min-h-28 w-full resize-y rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none transition focus:border-sazon-verdeHoja focus:ring-2 focus:ring-sazon-verdeHoja/20 dark:border-white/10 dark:bg-sazon-verdeNutresa dark:text-white"
+                onChange={(event) => setDetails(event.target.value)}
+                placeholder="Cuéntanos por qué debería revisarse este contenido."
+                required
+                rows={4}
+                value={details}
+              />
+            </label>
+
+            {formNotice && (
+              <output aria-live="polite" className="block text-xs text-slate-600 dark:text-slate-300">
+                {formNotice}
+              </output>
+            )}
+
+            <button
+              className="w-full rounded-xl bg-sazon-verdeHoja px-4 py-3 font-poppins text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-sazon-verdeHoja/90 focus:outline-none focus:ring-2 focus:ring-sazon-verdeHoja focus:ring-offset-2"
+              type="submit"
+            >
+              <i aria-hidden="true" className="bi bi-flag-fill mr-2" />
+              Enviar reporte
+            </button>
+          </form>
+
+          <section className="mt-5 rounded-2xl bg-slate-50 p-4 dark:bg-white/5">
+            <h3 className="mb-1 font-poppins text-xs font-bold text-slate-800 dark:text-white">
+              ¿Qué pasa después?
+            </h3>
+            <p className="m-0 text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+              El reporte queda en estado pendiente. Moderación revisará el contexto antes de retirar contenido o descartar el reporte.
+            </p>
+          </section>
+        </aside>
+      </section>
+    </main>
+  );
+}
