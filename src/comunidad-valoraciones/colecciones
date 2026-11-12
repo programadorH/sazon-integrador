@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html class="light" lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>Colección de Recetas · Sa·zón</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com" rel="preconnect"/>
+  <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=Poppins:wght@500;600;700;800;900&display=swap" rel="stylesheet"/>
+  <link href="../assets/css/global.css" rel="stylesheet"/>
+</head>
+<body class="min-h-screen bg-sazon-marfil px-4 py-8 font-inter text-slate-800 dark:bg-sazon-verdeNutresa dark:text-slate-100 sm:px-6 lg:px-8">
+  <main class="mx-auto w-full max-w-7xl">
+    <section aria-label="Colección personal de recetas" id="community-react-root"></section>
+  </main>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script type="text/babel">
+    const starterRecipes = [
+      {
+        id: "ajiaco-bogotano",
+        title: "Ajiaco bogotano",
+        category: "Almuerzos",
+        minutes: 55,
+        rating: 4.9,
+        description: "Un clásico reconfortante con pollo, papas criollas y mazorca.",
+        image: "https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=900&q=85"
+      },
+      {
+        id: "arepas-rellenas",
+        title: "Arepas rellenas de queso",
+        category: "Desayunos",
+        minutes: 25,
+        rating: 4.8,
+        description: "Doradas por fuera y suaves por dentro, perfectas para compartir.",
+        image: "https://images.unsplash.com/photo-1604467715878-83e57e8bc129?auto=format&fit=crop&w=900&q=85"
+      },
+      {
+        id: "brownies-chocolate",
+        title: "Brownies de chocolate",
+        category: "Postres",
+        minutes: 40,
+        rating: 4.7,
+        description: "Bocados intensos de chocolate para cerrar el día con algo dulce.",
+        image: "https://images.unsplash.com/photo-1606313564200-e75d5e30476c?auto=format&fit=crop&w=900&q=85"
+      },
+      {
+        id: "ensalada-fresca",
+        title: "Ensalada fresca de aguacate",
+        category: "Ensaladas",
+        minutes: 15,
+        rating: 4.6,
+        description: "Una combinación ligera de vegetales frescos y aguacate cremoso.",
+        image: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=900&q=85"
+      }
+    ];
+
+    const recipeCategories = ["Desayunos", "Almuerzos", "Ensaladas", "Postres"];
+    const collectionStorageKey = "sazon_comunidad_coleccion_recetas";
+
+    function readCollection() {
+      try {
+        const savedCollection = localStorage.getItem(collectionStorageKey);
+        if (savedCollection === null) {
+          return { recipes: starterRecipes, error: "" };
+        }
+        const parsedCollection = JSON.parse(savedCollection);
+        if (!Array.isArray(parsedCollection)) {
+          throw new Error("El formato guardado no es una colección de recetas.");
+        }
+        return { recipes: parsedCollection, error: "" };
+      } catch (error) {
+        return {
+          recipes: starterRecipes,
+          error: "No se pudo leer la colección guardada. Se muestran recetas de ejemplo."
+        };
+      }
+    }
+
+    function RecipeCollection() {
+      const [collection, setCollection] = React.useState(readCollection);
+      const [search, setSearch] = React.useState("");
+      const [activeCategory, setActiveCategory] = React.useState("Todas");
+      const [formOpen, setFormOpen] = React.useState(false);
+      const [recipeName, setRecipeName] = React.useState("");
+      const [recipeCategory, setRecipeCategory] = React.useState("Almuerzos");
+      const [recipeMinutes, setRecipeMinutes] = React.useState("");
+      const [message, setMessage] = React.useState("");
+
+      function saveCollection(nextRecipes) {
+        setCollection({ recipes: nextRecipes, error: "" });
+        try {
+          localStorage.setItem(collectionStorageKey, JSON.stringify(nextRecipes));
+        } catch (error) {
+          setCollection({
+            recipes: nextRecipes,
+            error: "No se pudo guardar el cambio. Revisa el almacenamiento del navegador."
+          });
+        }
+      }
+
+      function addRecipe(event) {
+        event.preventDefault();
+        const title = recipeName.trim();
+        const minutes = Number(recipeMinutes);
+        if (!title || !Number.isFinite(minutes) || minutes < 1) {
+          setMessage("Escribe un nombre y un tiempo válido para la receta.");
+          return;
+        }
+        const nextRecipe = {
+          id: `${Date.now()}-${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+          title,
+          category: recipeCategory,
+          minutes,
+          rating: null,
+          description: "Receta añadida a tu colección personal.",
+          image: "https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=900&q=85"
+        };
+        saveCollection([nextRecipe, ...collection.recipes]);
+        setRecipeName("");
+        setRecipeMinutes("");
+        setFormOpen(false);
+        setMessage("Receta añadida a tu colección.");
+      }
+
+      function removeRecipe(recipeId) {
+        saveCollection(collection.recipes.filter((recipe) => recipe.id !== recipeId));
+        setMessage("Receta eliminada de tu colección.");
+      }
+
+      const visibleRecipes = collection.recipes.filter((recipe) => {
+        const matchesCategory = activeCategory === "Todas" || recipe.category === activeCategory;
+        const matchesSearch = `${recipe.title} ${recipe.description}`.toLowerCase().includes(search.toLowerCase());
+        return matchesCategory && matchesSearch;
+      });
+
+      return (
+        <section className="space-y-6">
+          <header className="flex flex-col gap-5 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-emerald-900/40 dark:bg-sazon-verdeNutresaCard sm:flex-row sm:items-end sm:justify-between sm:p-8">
+            <section className="max-w-2xl space-y-3">
+              <span className="inline-flex items-center gap-2 rounded-full border border-sazon-verdeHoja/30 bg-sazon-verdeHoja/10 px-3 py-1 font-mono-tag text-[11px] font-bold uppercase tracking-wider text-sazon-verdeHoja dark:text-sazon-verdeNeon">
+                <i className="bi bi-bookmark-heart-fill"></i>
+                Mi recetario
+              </span>
+              <h2 className="m-0 font-poppins text-3xl font-black text-slate-900 dark:text-white sm:text-4xl">Tu próxima receta favorita</h2>
+              <p className="m-0 max-w-xl text-sm leading-6 text-slate-600 dark:text-slate-300">
+                Guarda las preparaciones que te inspiran y vuelve a ellas cuando quieras cocinar algo especial.
+              </p>
+            </section>
+            <button
+              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-sazon-verdeHoja px-5 py-3 font-poppins text-sm font-bold text-white shadow-md transition hover:-translate-y-0.5 hover:bg-sazon-verdeNutresa"
+              onClick={() => setFormOpen(!formOpen)}
+              type="button"
+            >
+              <i className={`bi ${formOpen ? "bi-x-lg" : "bi-plus-lg"}`}></i>
+              {formOpen ? "Cancelar" : "Añadir receta"}
+            </button>
+          </header>
+
+          {formOpen && (
+            <form className="grid gap-4 rounded-2xl border border-sazon-verdeHoja/20 bg-white p-5 dark:bg-sazon-verdeNutresaCard sm:grid-cols-2 lg:grid-cols-4" onSubmit={addRecipe}>
+              <label className="space-y-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300">
+                Nombre de la receta
+                <input
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-sazon-verdeHoja dark:border-white/10 dark:bg-sazon-verdeNutresa dark:text-white"
+                  maxLength="60"
+                  onChange={(event) => setRecipeName(event.target.value)}
+                  placeholder="Ej. Lasaña casera"
+                  required
+                  value={recipeName}
+                />
+              </label>
+              <label className="space-y-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300">
+                Categoría
+                <select
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-sazon-verdeHoja dark:border-white/10 dark:bg-sazon-verdeNutresa dark:text-white"
+                  onChange={(event) => setRecipeCategory(event.target.value)}
+                  value={recipeCategory}
+                >
+                  {recipeCategories.map((category) => <option key={category} value={category}>{category}</option>)}
+                </select>
+              </label>
+              <label className="space-y-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300">
+                Tiempo de preparación (min)
+                <input
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-sazon-verdeHoja dark:border-white/10 dark:bg-sazon-verdeNutresa dark:text-white"
+                  min="1"
+                  onChange={(event) => setRecipeMinutes(event.target.value)}
+                  placeholder="30"
+                  required
+                  type="number"
+                  value={recipeMinutes}
+                />
+              </label>
+              <button className="self-end rounded-xl bg-slate-900 px-4 py-2.5 font-poppins text-sm font-bold text-white transition hover:bg-sazon-verdeHoja dark:bg-white dark:text-slate-900" type="submit">
+                Guardar en mi colección
+              </button>
+            </form>
+          )}
+
+          <section aria-label="Resumen de la colección" className="grid gap-3 sm:grid-cols-3">
+            <article className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 dark:border-white/10 dark:bg-sazon-verdeNutresaCard">
+              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-sazon-verdeHoja/10 text-xl text-sazon-verdeHoja dark:text-sazon-verdeNeon"><i className="bi bi-journal-bookmark-fill"></i></span>
+              <section>
+                <p className="m-0 font-mono-tag text-[10px] uppercase tracking-wide text-slate-500 dark:text-slate-400">En tu colección</p>
+                <p className="m-0 font-poppins text-xl font-black text-slate-900 dark:text-white">{collection.recipes.length} recetas</p>
+              </section>
+            </article>
+            <article className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 dark:border-white/10 dark:bg-sazon-verdeNutresaCard">
+              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-100 text-xl text-amber-600 dark:bg-amber-400/10 dark:text-amber-300"><i className="bi bi-clock-history"></i></span>
+              <section>
+                <p className="m-0 font-mono-tag text-[10px] uppercase tracking-wide text-slate-500 dark:text-slate-400">Para inspirarte</p>
+                <p className="m-0 font-poppins text-xl font-black text-slate-900 dark:text-white">Todos los días</p>
+              </section>
+            </article>
+            <article className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 dark:border-white/10 dark:bg-sazon-verdeNutresaCard">
+              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-rose-100 text-xl text-rose-500 dark:bg-rose-400/10 dark:text-rose-300"><i className="bi bi-heart-fill"></i></span>
+              <section>
+                <p className="m-0 font-mono-tag text-[10px] uppercase tracking-wide text-slate-500 dark:text-slate-400">Hechas para compartir</p>
+                <p className="m-0 font-poppins text-xl font-black text-slate-900 dark:text-white">Con sabor a hogar</p>
+              </section>
+            </article>
+          </section>
+
+          <section className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <nav aria-label="Filtrar recetas por categoría" className="flex flex-wrap gap-2">
+              {["Todas", ...recipeCategories].map((category) => (
+                <button
+                  aria-pressed={activeCategory === category}
+                  className={`rounded-full px-4 py-2 text-xs font-bold transition ${activeCategory === category ? "bg-sazon-verdeHoja text-white shadow-sm" : "border border-slate-200 bg-white text-slate-600 hover:border-sazon-verdeHoja hover:text-sazon-verdeHoja dark:border-white/10 dark:bg-sazon-verdeNutresaCard dark:text-slate-300"}`}
+                  key={category}
+                  onClick={() => setActiveCategory(category)}
+                  type="button"
+                >
+                  {category}
+                </button>
+              ))}
+            </nav>
+            <label className="relative block w-full sm:max-w-xs">
+              <span className="sr-only">Buscar en mi colección</span>
+              <i className="bi bi-search absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+              <input
+                className="w-full rounded-full border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-xs outline-none focus:ring-2 focus:ring-sazon-verdeHoja dark:border-white/10 dark:bg-sazon-verdeNutresaCard dark:text-white"
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Buscar receta..."
+                type="search"
+                value={search}
+              />
+            </label>
+          </section>
+
+          {collection.error && <p className="m-0 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:bg-amber-400/10 dark:text-amber-200" role="alert">{collection.error}</p>}
+          {message && <output aria-live="polite" className="block rounded-xl bg-sazon-verdeHoja/10 px-4 py-3 text-sm text-sazon-verdeHoja dark:text-sazon-verdeNeon">{message}</output>}
+
+          {visibleRecipes.length > 0 ? (
+            <section aria-label="Recetas guardadas" className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              {visibleRecipes.map((recipe) => (
+                <article className="group overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg dark:border-white/10 dark:bg-sazon-verdeNutresaCard" key={recipe.id}>
+                  <figure className="relative m-0 h-48 overflow-hidden bg-slate-100 dark:bg-sazon-verdeNutresa">
+                    <img alt={recipe.title} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" loading="lazy" src={recipe.image}/>
+                    <span className="absolute left-3 top-3 rounded-full bg-white/95 px-3 py-1 font-mono-tag text-[10px] font-bold uppercase tracking-wide text-sazon-verdeHoja shadow-sm">{recipe.category}</span>
+                    <button
+                      aria-label={`Eliminar ${recipe.title} de mi colección`}
+                      className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-white/95 text-rose-500 shadow-sm transition hover:scale-110 hover:bg-rose-500 hover:text-white"
+                      onClick={() => removeRecipe(recipe.id)}
+                      title="Eliminar de mi colección"
+                      type="button"
+                    >
+                      <i className="bi bi-bookmark-x-fill"></i>
+                    </button>
+                  </figure>
+                  <section className="space-y-3 p-5">
+                    <header className="flex items-start justify-between gap-3">
+                      <h3 className="m-0 font-poppins text-lg font-bold leading-snug text-slate-900 dark:text-white">{recipe.title}</h3>
+                      {recipe.rating && <span className="inline-flex shrink-0 items-center gap-1 font-mono-tag text-xs font-bold text-amber-500"><i className="bi bi-star-fill"></i>{recipe.rating}</span>}
+                    </header>
+                    <p className="m-0 min-h-10 text-sm leading-5 text-slate-600 dark:text-slate-300">{recipe.description}</p>
+                    <footer className="flex items-center justify-between border-t border-slate-100 pt-3 text-xs text-slate-500 dark:border-white/10 dark:text-slate-400">
+                      <span className="inline-flex items-center gap-1.5"><i className="bi bi-stopwatch text-sazon-verdeHoja dark:text-sazon-verdeNeon"></i>{recipe.minutes} min</span>
+                      <span className="inline-flex items-center gap-1.5"><i className="bi bi-bookmark-heart text-sazon-verdeHoja dark:text-sazon-verdeNeon"></i>Guardada</span>
+                    </footer>
+                  </section>
+                </article>
+              ))}
+            </section>
+          ) : (
+            <section className="rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center dark:border-white/20 dark:bg-sazon-verdeNutresaCard">
+              <i className="bi bi-search text-3xl text-sazon-verdeHoja dark:text-sazon-verdeNeon"></i>
+              <h3 className="mt-3 font-poppins text-lg font-bold text-slate-900 dark:text-white">No encontramos recetas</h3>
+              <p className="m-0 text-sm text-slate-500 dark:text-slate-400">Prueba otra búsqueda o elige una categoría diferente.</p>
+            </section>
+          )}
+        </section>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("community-react-root")).render(<RecipeCollection />);
+  </script>
+</body>
+</html>
