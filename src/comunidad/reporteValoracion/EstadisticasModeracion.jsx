@@ -9,19 +9,19 @@ const TARJETAS = [
     borde: 'border-red-200 dark:border-red-900/50',
     marca: 'bg-red-500',
     pieIcono: 'bi-exclamation-lg',
-    pie: '3 con alta prioridad de revisión',
+    pie: 'Reportes en espera de moderación',
   },
   {
     id: 'aprobados',
-    etiqueta: 'Aprobados hoy',
-    detalle: '+18% vs ayer',
+    etiqueta: 'Reportes aprobados',
+    detalle: 'resueltos',
     icono: 'bi-check-circle',
     color: 'text-sazon-verdeHoja dark:text-sazon-verdeNeon',
     tono: 'bg-sazon-verdeHoja/10 dark:bg-sazon-verdeHoja/15',
     borde: 'border-sazon-verdeHoja/20 dark:border-emerald-900/50',
     marca: 'bg-sazon-verdeHoja',
     pieIcono: 'bi-patch-check',
-    pie: 'Interacciones culinarias válidas',
+    pie: 'Interacciones revisadas y válidas',
   },
   {
     id: 'bloqueados',
@@ -36,21 +36,21 @@ const TARJETAS = [
     pie: 'Infracciones directas a normas',
   },
   {
-    id: 'tiempo',
-    etiqueta: 'Tiempo promedio',
-    detalle: 'min',
-    icono: 'bi-stopwatch',
-    color: 'text-stone-700 dark:text-stone-200',
-    tono: 'bg-stone-100 dark:bg-white/10',
-    borde: 'border-slate-200 dark:border-white/10',
-    marca: 'bg-stone-500',
-    pieIcono: 'bi-graph-down-arrow',
-    pie: '-4.5 min por debajo del SLA',
+    id: 'prioritarios',
+    etiqueta: 'Alta prioridad',
+    detalle: 'pendientes',
+    icono: 'bi-exclamation-triangle-fill',
+    color: 'text-red-700 dark:text-red-300',
+    tono: 'bg-red-100 dark:bg-red-400/15',
+    borde: 'border-red-200 dark:border-red-900/50',
+    marca: 'bg-red-500',
+    pieIcono: 'bi-exclamation-circle',
+    pie: 'Requieren atención prioritaria',
   },
 ]
 
-function EstadisticasModeracion({ pendientes, aprobados, bloqueados }) {
-  const valores = { pendientes, aprobados, bloqueados, tiempo: 14 }
+function EstadisticasModeracion({ pendientes, aprobados, bloqueados, prioritarios }) {
+  const valores = { pendientes, aprobados, bloqueados, prioritarios }
 
   return (
     <section aria-label="Resumen de moderación" className="grid grid-cols-1 gap-4 sm:grid-cols-2 min-[900px]:grid-cols-4">
